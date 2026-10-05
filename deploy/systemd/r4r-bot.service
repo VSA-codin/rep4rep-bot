@@ -1,0 +1,26 @@
+[Unit]
+Description=R4R Bot Auto Run
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=3600
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=admin
+Group=admin
+WorkingDirectory=/home/admin/apps/R4R-bot
+Environment=NODE_ENV=production
+ExecStart=/home/admin/.nvm/versions/node/v26.10.0/bin/node /home/admin/apps/R4R-bot/index.js --auto
+
+Restart=on-failure
+RestartSec=5min
+
+StandardInput=null
+StandardOutput=journal
+StandardError=journal
+
+TimeoutStopSec=30
+KillSignal=SIGTERM
+NoNewPrivileges=true
+PrivateTmp=true
