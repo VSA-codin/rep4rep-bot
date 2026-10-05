@@ -1,0 +1,5 @@
+node_modules/
+steamprofiles.db
+config.json
+*.bak
+npm-debug.log*
