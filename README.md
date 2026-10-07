@@ -30,10 +30,10 @@ The VPS currently used for this bot runs Node.js `v26.10.0`.
 
 ## Installation
 
-Install dependencies from the lockfile:
+Install dependencies:
 
 ```bash
-npm ci
+npm install
 ```
 
 Create/edit `config.json`:
