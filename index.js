@@ -3,6 +3,30 @@ var readLine = require('readline');
 const sqlite3 = require('sqlite3').verbose();
 var SteamCommunity = require('steamcommunity');
 var community = new SteamCommunity();
+const SteamTotp = require('steam-totp');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
+function getSteam2FASecret(accountName) {
+    try {
+        const file = path.join(
+            os.homedir(),
+            '.config',
+            'r4r',
+            'steam-2fa.json'
+        );
+
+        const data = JSON.parse(
+            fs.readFileSync(file, 'utf8')
+        );
+
+        return data?.[accountName]?.shared_secret || null;
+    } catch {
+        return null;
+    }
+}
+
 const SteamID = require('steamid');
 var config = require('./config.json');
 const FormData = require('form-data');
@@ -151,9 +175,9 @@ async function db_all(query) {
     });
 }
 
-async function isLoggedIn() {
+async function isLoggedIn(client = community) {
     return new Promise(function(resolve,reject){
-         community.loggedIn(function(err, loggedIn, familyView) {
+         client.loggedIn(function(err, loggedIn, familyView) {
              if(err){return reject(err);}
              resolve(loggedIn);
          });
@@ -209,9 +233,10 @@ async function autoRun() {
             console.log('attempting to leave comments from: ' + steamProfile.username);
             console.log('[ 15 sec delay between each comment ]'.bold.cyan);
 
-            community.setCookies(JSON.parse(steamProfile.cookies));
-            community.oAuthToken = steamProfile.token;
-            let loggedIn = await isLoggedIn();
+            const accountCommunity = new SteamCommunity();
+            accountCommunity.setCookies(JSON.parse(steamProfile.cookies));
+            accountCommunity.oAuthToken = steamProfile.token;
+            let loggedIn = await isLoggedIn(accountCommunity);
 
             if (!loggedIn) {
                 console.log(steamProfile.username + ' is logged out, re-login from the manage profiles view.'.bold.red);
@@ -235,7 +260,7 @@ async function autoRun() {
 
                 console.log(steamProfile.username + ' -> ' + task.targetSteamProfileName + ' | ' + task.requiredCommentText);
 
-                await community.postUserComment(task.targetSteamProfileId, task.requiredCommentText, async function(err) {
+                await accountCommunity.postUserComment(task.targetSteamProfileId, task.requiredCommentText, async function(err) {
                     if (err) {
                         console.log(err.message);
                         failedAttempts++;
@@ -335,9 +360,17 @@ function doLogin(accountName, password, authCode, twoFactorCode, captcha) {
 	}, function(err, sessionID, cookies, steamguard, oauthToken) {
 		if(err) {
 			if(err.message == 'SteamGuardMobile') {
-				rl.question("Steam Authenticator Code: ", function(code) {
+				const sharedSecret = getSteam2FASecret(accountName);
+
+				if (sharedSecret) {
+					const code = SteamTotp.generateAuthCode(sharedSecret);
+					console.log('[2FA] Generated Steam Guard code automatically.');
 					doLogin(accountName, password, null, code);
-				});
+				} else {
+					rl.question("Steam Authenticator Code: ", function(code) {
+						doLogin(accountName, password, null, code);
+					});
+				}
 
 				return;
 			}
