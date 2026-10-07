@@ -3,3 +3,7 @@ steamprofiles.db
 config.json
 *.bak
 npm-debug.log*
+steam-2fa.json
+*.2fa-pending.json
+*.maFile
+*.mafile
