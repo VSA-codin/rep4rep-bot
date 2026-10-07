@@ -13,9 +13,11 @@ R4R Bot automates Steam comment tasks through the rep4rep public API. The curren
 - Fetches available rep4rep tasks for each saved profile.
 - Posts the required Steam comments with a delay between comments.
 - Tracks the last successful comment time and respects the bot's 24-hour readiness logic.
-- Supports Steam Guard, mobile authenticator and CAPTCHA prompts during manual login.
+- Supports Steam Guard, CAPTCHA prompts and automatic Steam Guard Mobile code generation from the local VPS 2FA store during manual re-login.
 - Lets you add, re-login and remove Steam accounts from the interactive menu.
 - Supports `--auto` mode so a scheduler can run the job without waiting for keyboard input.
+- Uses a separate `SteamCommunity` client per saved account during Auto Run to avoid cross-account session mixing.
+- Integrates with [`steam-2fa-r4r-tool`](https://github.com/VSA-codin/steam-2fa-r4r-tool) for VPS-side Steam Guard Mobile setup and code generation.
 
 ## Requirements
 
@@ -80,7 +82,7 @@ The account menu provides:
 4) Back
 ```
 
-Use **Re-Login** when a saved Steam session has expired. Steam Guard/mobile authenticator/CAPTCHA prompts are handled interactively when Steam requests them.
+Use **Re-Login** when a saved Steam session has expired. If the account has a stored `shared_secret` in `~/.config/r4r/steam-2fa.json`, the Steam Guard Mobile code is generated automatically. Email Steam Guard and CAPTCHA prompts remain interactive when Steam requests them.
 
 ## Automatic mode
 
@@ -118,13 +120,13 @@ ssh -i "$env:USERPROFILE\Downloads\KYNTRA-key.pem" admin@3.76.82.252
 
 ## Current automatic schedule
 
-R4R Bot runs once per day at:
+R4R Bot is checked **every hour on the hour**:
 
 ```text
-06:00 Europe/Warsaw
+OnCalendar=hourly
 ```
 
-The VPS itself can remain on UTC. The timer uses `Europe/Warsaw`, so daylight-saving-time changes are handled automatically.
+The VPS runs in UTC. In Poland, the displayed local trigger time depends on daylight saving time. If the previous Auto Run is still active at the next hourly trigger, systemd does not start a second copy of the same service in parallel.
 
 Check the timer:
 
@@ -200,13 +202,35 @@ Make the account changes. When finished, exit with:
 CTRL + C
 ```
 
-Then restore the daily timer:
+Then restore the hourly timer:
 
 ```bash
 sudo systemctl start r4r-bot.timer
 systemctl is-active r4r-bot.timer
 systemctl list-timers r4r-bot.timer --all --no-pager
 ```
+
+## Steam 2FA helper
+
+The companion project is:
+
+```text
+~/apps/steam-2fa-r4r-tool
+```
+
+Repository:
+
+```text
+https://github.com/VSA-codin/steam-2fa-r4r-tool
+```
+
+The sensitive authenticator data stays outside Git repositories:
+
+```text
+~/.config/r4r/steam-2fa.json
+```
+
+Do not commit or publish that file, Steam passwords, cookies, access tokens, `shared_secret`, `identity_secret` or `revocation_code`.
 
 ## systemd files
 
