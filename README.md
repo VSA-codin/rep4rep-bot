@@ -5,6 +5,20 @@
 
 R4R Bot automates Steam comment tasks through the rep4rep public API. The current VSA edition includes an interactive Steam-account manager and a non-interactive `--auto` mode intended for scheduled VPS execution.
 
+## Project origin & attribution
+
+This repository is a **rebuilt and maintained VSA edition** of an earlier rep4rep bot codebase.
+
+- **Upstream project:** [rep4rep/rep4rep-bot](https://github.com/rep4rep/rep4rep-bot)
+- **Upstream service/API:** [rep4rep](https://rep4rep.com/)
+- **VSA edition:** repaired, rebuilt and extended by **VSA**
+- **Discord:** `vacsecuredapproved`
+
+The VSA edition adds and maintains the current VPS deployment, scheduled Auto Run workflow, multi-account session isolation and Steam Guard integration.
+
+VSA does **not** claim authorship of the original rep4rep project or its inherited code. The upstream repository currently does not provide a software license covering the old bot code. Accordingly, this repository does not claim that the inherited portions are open-source or relicense them under ISC/MIT. See [NOTICE.md](NOTICE.md) for details.
+
+
 ## What the bot does
 
 - Runs rep4rep Auto Run tasks for saved Steam profiles.
