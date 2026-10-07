@@ -1,10 +1,9 @@
 [Unit]
-Description=Run R4R Bot every day at 06:00 Poland time
+Description=Run R4R Bot every hour
 
 [Timer]
-OnCalendar=*-*-* 06:00:00 Europe/Warsaw
+OnCalendar=hourly
 Persistent=true
-AccuracySec=1min
 Unit=r4r-bot.service
 
 [Install]
