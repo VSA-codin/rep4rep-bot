@@ -1,44 +1,31 @@
 # Security
 
-**Made by VSA**
-**Discord:** `vacsecuredapproved`
+The Steam Guard tools and R4R Bot handle authentication secrets. Keep them outside the Git repository and restrict file access on the host.
 
-This project handles authentication material. Treat the local secret store as sensitive.
+## Local files
 
-## Never commit
+The Steam Guard module saves authenticator data under `~/.config/r4r/` by default. The main bot also supports unattended re-login using a local `steam-passwords.json` file and `steam-2fa.json`. These files contain credentials or secrets and must be protected accordingly.
 
-Never commit or upload:
-
-- Steam passwords
-- Steam session cookies or access tokens
-- authenticator secrets
-- recovery/revocation codes
-- SDA/maFiles
-- `steam-2fa.json`
-- `*.2fa-pending.json`
-
-## Local permissions
-
-Recommended permissions:
+On Linux, recommended permissions for the default location are:
 
 ```bash
 chmod 700 ~/.config/r4r
 chmod 600 ~/.config/r4r/steam-2fa.json
-chmod 600 ~/.config/r4r/*.2fa-pending.json 2>/dev/null || true
+chmod 600 ~/.config/r4r/steam-passwords.json
 ```
 
-Backups of these files contain the same sensitive material and must be protected the same way.
+Apply the same restrictions to `relogin-attempts.json`, pending enrollment files, and any backups that contain private data. File permissions are only one layer of protection: limit access to the host and the account running the service.
 
-## If authentication material is exposed
+## Keep out of Git
 
-Assume it is compromised. Remove it from public access and use Steam's account-security/recovery controls to revoke or replace the affected authenticator or session.
+Never commit passwords, API tokens, Steam cookies, mobile authenticator secrets, recovery codes, SDA/maFiles, pending enrollment files, or copies of the local SQLite session database.
 
-Deleting a Git commit is not enough to make an already-published secret safe again.
+The enrollment script reads `STEAM_USER` and `STEAM_PASS` from the environment. Avoid putting credentials directly into shell commands that may be saved in history, and clear sensitive environment variables when finished.
 
-## Passwords
+## If a secret is exposed
 
-This repository intentionally does not persist Steam passwords. If R4R-bot later needs unattended re-login, keep passwords in a separate system secret mechanism rather than Git.
+Revoke or replace the affected Steam authenticator, credentials, or sessions using Steam's account security controls. Deleting a published file or commit does not invalidate a leaked secret.
 
-## Logging
+Production logs should not contain passwords, session cookies, or authenticator codes.
 
-Do not print secrets or authentication codes in production logs.
+Maintainer: VSA (`vacsecuredapproved` on Discord).

@@ -1,55 +1,33 @@
-# Steam Guard 2FA — R4R Bot
+# Steam Guard tools for R4R Bot
 
-Integrated Steam Guard module maintained by VSA.
+This directory contains VSA's Steam Guard Mobile enrollment and code-generation utilities. It is part of the main R4R Bot repository.
 
-This module is included in the main `rep4rep-bot` repository.
-No separate repository installation is required.
+From the repository root, install dependencies and run the syntax checks:
 
-## Installation
+```bash
+npm install
+npm run check:2fa
+```
 
-From the main repository directory:
+## Enrollment
 
-    npm install
-    npm run check
+The enrollment script requires the Steam login name and password in the `STEAM_USER` and `STEAM_PASS` environment variables. Do not paste passwords into commands saved in shell history. Steam may request an email code or an activation code during enrollment.
 
-## Commands
+```bash
+npm run 2fa:enroll
+```
 
-Enroll a Steam account:
+If enrollment was started but not completed, the pending enrollment can be finalized for that account:
 
-    npm run 2fa:enroll
+```bash
+npm run 2fa:finalize -- ACCOUNT
+```
 
-Finalize pending enrollment:
+## Using the authenticator with R4R Bot
 
-    npm run 2fa:finalize -- ACCOUNT
+The bot's `auto-relogin.js` can use saved credentials and a stored Steam Guard shared secret to recover an expired session without a keyboard prompt. The default private file location is `~/.config/r4r/`:
 
-Check the module:
+- `steam-2fa.json` — authenticator secrets
+- `steam-passwords.json` — credentials used for unattended re-login
 
-    npm run check:2fa
-
-Enrollment requires STEAM_USER and STEAM_PASS environment
-variables. Supply passwords interactively, not as literal
-commands saved in shell history.
-
-## Automatic login
-
-The main bot uses `auto-relogin.js` for unattended login
-with stored credentials and Steam Guard codes.
-
-## Private data
-
-Authentication data must remain outside the repository:
-
-    ~/.config/r4r/steam-passwords.json
-    ~/.config/r4r/steam-2fa.json
-
-Never publish passwords, cookies, shared_secret,
-identity_secret, revocation_code or API tokens.
-
-The module stores authentication data with restricted
-filesystem permissions.
-
-## License and attribution
-
-See LICENSE in this directory for the 2FA module license.
-The main bot's inherited code has separate licensing
-and attribution information in the repository NOTICE.md.
+These files must remain outside Git with restricted permissions. See [SECURITY.md](SECURITY.md). The main bot's inherited code and its attribution are described in the root [NOTICE.md](../NOTICE.md); this module has its own [MIT license](LICENSE).
