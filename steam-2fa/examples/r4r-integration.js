@@ -3,9 +3,8 @@
 /*
  * Example integration for an existing R4R-bot login flow.
  *
- * Folder layout:
- *   ~/apps/R4R-bot
- *   ~/apps/steam-2fa-r4r-tool
+ * The caller owns its login timeout and attempt budget. This handler answers
+ * one Mobile Guard challenge; it should run inside a bounded login flow.
  */
 
 const {
@@ -40,9 +39,9 @@ function handleSteamGuardMobile(
             null,
             code
         );
-    } catch (secretErr) {
+    } catch {
         console.log(
-            '[2FA] ' + secretErr.message
+            '[2FA] Stored authenticator is unavailable. Enter a code manually.'
         );
 
         rl.question(

@@ -2,18 +2,12 @@
 
 const SteamTotp = require('steam-totp');
 const {
-    getAccountSecrets
+    getAccountSecrets,
+    validateSecret
 } = require('./store');
 
 function generateCodeFromSecret(sharedSecret) {
-    if (
-        typeof sharedSecret !== 'string' ||
-        !sharedSecret
-    ) {
-        throw new Error('shared_secret is missing.');
-    }
-
-    return SteamTotp.generateAuthCode(sharedSecret);
+    return SteamTotp.generateAuthCode(validateSecret(sharedSecret));
 }
 
 function generateCodeForAccount(accountName) {

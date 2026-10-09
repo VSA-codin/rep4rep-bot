@@ -3,20 +3,23 @@
   "version": "0.0.3",
   "description": "Rep4Rep.com Automatic Comment Bot.",
   "main": "index.js",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "dependencies": {
-    "colors": "^1.4.0",
-    "form-data": "^4.0.0",
-    "moment": "^2.29.1",
-    "node-fetch": "^2.0.0",
+    "form-data": "^4.0.6",
+    "node-fetch": "^2.7.0",
     "sqlite3": "6.0.1",
+    "steam-session": "^1.9.4",
     "steam-totp": "^2.1.2",
-    "steamcommunity": "^3.50.3",
-    "steamid": "^2.0.0"
+    "steamcommunity": "^3.50.3"
   },
   "scripts": {
     "start": "node index.js",
-    "check": "node --check index.js && node --check auto-relogin.js && npm run check:2fa",
-    "check:2fa": "node --check steam-2fa/index.js && node --check steam-2fa/src/store.js && node --check steam-2fa/src/totp.js && node --check steam-2fa/scripts/enroll.js && node --check steam-2fa/scripts/finalize.js",
+    "check": "node scripts/check.js",
+    "check:2fa": "node scripts/check.js steam-2fa",
+    "test": "node --require ./test/helpers/offline.js --test test/*.test.js",
     "2fa:enroll": "node steam-2fa/scripts/enroll.js",
     "2fa:finalize": "node steam-2fa/scripts/finalize.js"
   },
@@ -37,7 +40,8 @@
   "overrides": {
     "request": {
       "form-data": "2.5.6",
-      "qs": "6.16.0"
+      "qs": "6.16.0",
+      "tough-cookie": "4.1.4"
     }
   }
 }

@@ -6,12 +6,18 @@ StartLimitIntervalSec=3600
 StartLimitBurst=3
 
 [Service]
-Type=simple
-User=admin
-Group=admin
-WorkingDirectory=/home/admin/apps/R4R-bot
+Type=oneshot
+User=r4r
+Group=r4r
+WorkingDirectory=/opt/r4r-bot
 Environment=NODE_ENV=production
-ExecStart=/home/admin/.nvm/versions/node/v26.10.0/bin/node /home/admin/apps/R4R-bot/index.js --auto
+Environment=R4R_CONFIG_FILE=/var/lib/r4r/config.json
+Environment=R4R_DB_PATH=/var/lib/r4r/steamprofiles.db
+Environment=R4R_2FA_DIR=/var/lib/r4r/auth
+StateDirectory=r4r
+StateDirectoryMode=0700
+UMask=0077
+ExecStart=/usr/bin/node /opt/r4r-bot/index.js --auto
 
 Restart=on-failure
 RestartSec=5min
@@ -20,7 +26,12 @@ StandardInput=null
 StandardOutput=journal
 StandardError=journal
 
-TimeoutStopSec=30
+TimeoutStartSec=2h
+TimeoutStopSec=30s
 KillSignal=SIGTERM
+KillMode=control-group
 NoNewPrivileges=true
 PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/r4r
