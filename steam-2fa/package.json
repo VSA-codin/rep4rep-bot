@@ -5,12 +5,13 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "check": "node --check index.js && node --check src/store.js && node --check src/totp.js && node --check scripts/enroll.js && node --check scripts/finalize.js && node --check examples/r4r-integration.js",
+    "check": "node --check index.js && node --check src/store.js && node --check src/totp.js && node --check src/enrollment.js && node --check src/cli.js && node --check scripts/enroll.js && node --check scripts/finalize.js && node --check examples/r4r-integration.js",
+    "test": "node --require ../test/helpers/offline.js --test ../test/steam-2fa*.test.js",
     "enroll": "node scripts/enroll.js",
     "finalize": "node scripts/finalize.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "author": "VSA (Discord: vacsecuredapproved)",
   "license": "MIT",

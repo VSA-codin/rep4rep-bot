@@ -1,206 +1,214 @@
 'use strict';
 
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
+const path = require('node:path');
+const fs = require('node:fs');
+const {randomUUID} = require('node:crypto');
+const {
+    getPrivatePaths,
+    ensurePrivateDirectory,
+    readPrivateJson,
+    atomicWritePrivateJson,
+    removePrivateFile,
+    validateAccountName
+} = require('../../lib/private-files');
 
-const CONFIG_DIR = process.env.R4R_2FA_DIR
-    ? path.resolve(process.env.R4R_2FA_DIR)
-    : path.join(os.homedir(), '.config', 'r4r');
-
-const CONFIG_FILE = process.env.R4R_2FA_FILE
-    ? path.resolve(process.env.R4R_2FA_FILE)
-    : path.join(CONFIG_DIR, 'steam-2fa.json');
-
-function ensureConfigDir() {
-    fs.mkdirSync(CONFIG_DIR, {
-        recursive: true,
-        mode: 0o700
-    });
-
-    try {
-        fs.chmodSync(CONFIG_DIR, 0o700);
-    } catch {
-        // Best effort. A permission error will surface on file access.
-    }
+function isRecord(value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value)
+        && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
 }
 
-function safeReadJson(file, fallback = {}) {
-    try {
-        const raw = fs.readFileSync(file, 'utf8');
-        return JSON.parse(raw || '{}');
-    } catch (err) {
-        if (err.code === 'ENOENT') {
-            return fallback;
+function validateSecret(secret, field = 'shared_secret') {
+    if (typeof secret !== 'string' || !secret || secret.length > 128) {
+        throw new Error(`Invalid ${field}.`);
+    }
+
+    // steam-totp accepts either a 20-byte hexadecimal secret or canonical base64.
+    const validHex = /^[a-f0-9]{40}$/i.test(secret);
+    const validBase64 = /^[A-Za-z0-9+/]+={0,2}$/.test(secret)
+        && Buffer.from(secret, 'base64').length === 20
+        && Buffer.from(secret, 'base64').toString('base64') === secret;
+    if (!validHex && !validBase64) {
+        throw new Error(`Invalid ${field}.`);
+    }
+
+    return secret;
+}
+
+function validateSecrets(secrets) {
+    if (!isRecord(secrets)) {
+        throw new Error('Authenticator secrets must be a JSON object.');
+    }
+
+    const shared_secret = validateSecret(secrets.shared_secret);
+    const identity_secret = secrets.identity_secret == null
+        ? null : validateSecret(secrets.identity_secret, 'identity_secret');
+    const revocation_code = secrets.revocation_code == null ? null : secrets.revocation_code;
+    if (revocation_code !== null && (typeof revocation_code !== 'string'
+        || !/^[\x21-\x7e]{1,128}$/.test(revocation_code))) {
+        throw new Error('Invalid revocation_code.');
+    }
+
+    return {shared_secret, identity_secret, revocation_code};
+}
+
+function validateStore(store) {
+    if (!isRecord(store)) {
+        throw new Error('2FA store must be a JSON object.');
+    }
+    const names = new Set();
+    for (const [name, secrets] of Object.entries(store)) {
+        const account = validateAccountName(name).toLowerCase();
+        if (names.has(account)) {
+            throw new Error('2FA store contains duplicate account names.');
         }
-
-        throw err;
+        names.add(account);
+        validateSecrets(secrets);
     }
-}
-
-function atomicWriteJson(file, data) {
-    ensureConfigDir();
-
-    const tmp = file + '.tmp-' + process.pid;
-
-    fs.writeFileSync(
-        tmp,
-        JSON.stringify(data, null, 2) + '\n',
-        {
-            encoding: 'utf8',
-            mode: 0o600
-        }
-    );
-
-    fs.chmodSync(tmp, 0o600);
-    fs.renameSync(tmp, file);
-    fs.chmodSync(file, 0o600);
-}
-
-function readStore() {
-    ensureConfigDir();
-
-    const store = safeReadJson(CONFIG_FILE, {});
-
-    if (
-        store === null ||
-        Array.isArray(store) ||
-        typeof store !== 'object'
-    ) {
-        throw new Error('2FA store is not a JSON object.');
-    }
-
-    if (fs.existsSync(CONFIG_FILE)) {
-        fs.chmodSync(CONFIG_FILE, 0o600);
-    }
-
     return store;
 }
 
-function writeStore(store) {
-    atomicWriteJson(CONFIG_FILE, store);
-}
-
-function validateAccountName(accountName) {
-    if (
-        typeof accountName !== 'string' ||
-        !accountName.trim()
-    ) {
-        throw new Error('Steam account name is required.');
+function validatePending(data, account) {
+    if (!isRecord(data)) {
+        throw new Error('Pending enrollment must be a JSON object.');
     }
-
-    return accountName.trim();
-}
-
-function getAccountSecrets(accountName) {
-    const account = validateAccountName(accountName);
-    const store = readStore();
-
-    return store[account] || null;
-}
-
-function hasAccountSecrets(accountName) {
-    const data = getAccountSecrets(accountName);
-
-    return Boolean(
-        data &&
-        typeof data.shared_secret === 'string' &&
-        data.shared_secret.length > 0
-    );
-}
-
-function saveAccountSecrets(accountName, secrets) {
-    const account = validateAccountName(accountName);
-
-    if (
-        !secrets ||
-        typeof secrets.shared_secret !== 'string' ||
-        !secrets.shared_secret
-    ) {
-        throw new Error('shared_secret is required.');
+    if (data.account_name !== undefined
+        && validateAccountName(data.account_name).toLowerCase() !== account.toLowerCase()) {
+        throw new Error('Pending enrollment belongs to another account.');
     }
-
-    const store = readStore();
-
-    store[account] = {
-        shared_secret: secrets.shared_secret,
-        identity_secret: secrets.identity_secret || null,
-        revocation_code: secrets.revocation_code || null
-    };
-
-    writeStore(store);
-
-    return store[account];
-}
-
-function getPendingPath(accountName) {
-    const account = validateAccountName(accountName);
-
-    if (
-        account.includes('/') ||
-        account.includes('\\') ||
-        account.includes('..')
-    ) {
-        throw new Error('Invalid Steam account name.');
+    if (data.state === 'requesting') {
+        if (typeof data.reservation_id !== 'string' || !/^[a-f0-9-]{36}$/i.test(data.reservation_id)
+            || typeof data.created_at !== 'string' || !Number.isFinite(Date.parse(data.created_at))
+            || data.shared_secret !== undefined) {
+            throw new Error('Enrollment reservation is invalid.');
+        }
+    } else {
+        if (data.state !== undefined && data.state !== 'pending' && data.state !== 'finalized') {
+            throw new Error('Pending enrollment state is invalid.');
+        }
+        validateSecrets(data);
     }
-
-    ensureConfigDir();
-
-    return path.join(
-        CONFIG_DIR,
-        account + '.2fa-pending.json'
-    );
-}
-
-function readPending(accountName) {
-    const file = getPendingPath(accountName);
-    const data = safeReadJson(file, null);
-
-    if (!data) {
-        return null;
-    }
-
-    if (
-        typeof data !== 'object' ||
-        Array.isArray(data)
-    ) {
-        throw new Error('Pending enrollment is invalid.');
-    }
-
-    fs.chmodSync(file, 0o600);
-
     return data;
 }
 
-function writePending(accountName, data) {
-    const file = getPendingPath(accountName);
-    atomicWriteJson(file, data);
-    return file;
-}
+function createStore({env = process.env} = {}) {
+    const {dir, secrets: configFile} = getPrivatePaths(env);
 
-function deletePending(accountName) {
-    const file = getPendingPath(accountName);
-
-    if (fs.existsSync(file)) {
-        fs.unlinkSync(file);
-        return true;
+    function readStore() {
+        return validateStore(readPrivateJson(configFile, {fallback: {}}));
     }
 
-    return false;
+    function withLock(callback) {
+        const lock = configFile + '.lock';
+        // Exclusive publication serializes cooperating writers without following links.
+        atomicWritePrivateJson(lock, {pid: process.pid}, {overwrite: false});
+        try {
+            return callback();
+        } finally {
+            removePrivateFile(lock);
+        }
+    }
+
+    function findAccount(store, account) {
+        return Object.keys(store).find(name => name.toLowerCase() === account.toLowerCase());
+    }
+
+    function getAccountSecrets(accountName) {
+        const account = validateAccountName(accountName);
+        const store = readStore();
+        const key = findAccount(store, account);
+        return key === undefined ? null : validateSecrets(store[key]);
+    }
+
+    function hasAccountSecrets(accountName) {
+        return getAccountSecrets(accountName) !== null;
+    }
+
+    function saveAccountSecrets(accountName, secrets) {
+        const account = validateAccountName(accountName);
+        const validated = validateSecrets(secrets);
+        return withLock(() => {
+            const store = readStore();
+            if (findAccount(store, account) !== undefined) {
+                throw new Error('Refusing to overwrite an existing authenticator.');
+            }
+            Object.defineProperty(store, account, {value: validated, enumerable: true, writable: true, configurable: true});
+            atomicWritePrivateJson(configFile, store);
+            return validated;
+        });
+    }
+
+    function getPendingPath(accountName) {
+        // Steam login names are case-insensitive; use one reservation per account.
+        const name = validateAccountName(accountName).toLowerCase() + '.2fa-pending.json';
+        ensurePrivateDirectory(dir);
+        const existing = fs.readdirSync(dir).filter(entry => entry.toLowerCase() === name);
+        if (existing.length > 1) {
+            throw new Error('Multiple pending enrollments exist for this account.');
+        }
+        // Preserve the location of pending files created by earlier versions.
+        return path.join(dir, existing[0] || name);
+    }
+
+    function readPending(accountName) {
+        const account = validateAccountName(accountName);
+        const data = readPrivateJson(getPendingPath(account), {fallback: undefined});
+        return data === undefined ? null : validatePending(data, account);
+    }
+
+    function writePending(accountName, data, {replace = false, expectedReservationId} = {}) {
+        const account = validateAccountName(accountName);
+        validatePending(data, account);
+        const file = getPendingPath(account);
+        return withLock(() => {
+            if (replace) {
+                const existing = readPending(account);
+                if (!existing || !expectedReservationId || existing.reservation_id !== expectedReservationId
+                    || existing.state !== 'requesting') {
+                    throw new Error('Pending enrollment changed; refusing to overwrite it.');
+                }
+            }
+            atomicWritePrivateJson(file, data, {overwrite: replace});
+            return file;
+        });
+    }
+
+    function deletePending(accountName) {
+        return removePrivateFile(getPendingPath(accountName));
+    }
+
+    function markPendingFinalized(accountName, expectedSecrets) {
+        const validated = validateSecrets(expectedSecrets);
+        return withLock(() => {
+            const existing = readPending(accountName);
+            if (!existing || existing.state === 'requesting'
+                || JSON.stringify(validateSecrets(existing)) !== JSON.stringify(validated)) {
+                throw new Error('Pending enrollment changed before finalization could be recorded.');
+            }
+            const finalized = {...existing, state: 'finalized'};
+            atomicWritePrivateJson(getPendingPath(accountName), finalized);
+            return finalized;
+        });
+    }
+
+    function acquireEnrollmentLock(accountName) {
+        const file = getPendingPath(accountName) + '.operation-lock';
+        const id = randomUUID();
+        atomicWritePrivateJson(file, {pid: process.pid, id}, {overwrite: false});
+        return () => {
+            const existing = readPrivateJson(file);
+            if (existing?.id !== id) {
+                throw new Error('Enrollment operation lock changed.');
+            }
+            removePrivateFile(file);
+        };
+    }
+
+    function getConfigPath() {
+        return configFile;
+    }
+
+    return {getAccountSecrets, hasAccountSecrets, saveAccountSecrets, getPendingPath,
+        readPending, writePending, deletePending, markPendingFinalized, acquireEnrollmentLock, getConfigPath};
 }
 
-function getConfigPath() {
-    ensureConfigDir();
-    return CONFIG_FILE;
-}
-
-module.exports = {
-    getAccountSecrets,
-    hasAccountSecrets,
-    saveAccountSecrets,
-    getPendingPath,
-    readPending,
-    writePending,
-    deletePending,
-    getConfigPath
-};
+module.exports = {...createStore(), createStore, validateSecret, validateSecrets};
