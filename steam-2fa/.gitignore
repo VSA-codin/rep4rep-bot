@@ -1,0 +1,29 @@
+node_modules/
+npm-debug.log*
+*.log
+.env
+.env.*
+!.env.example
+
+# Never commit Steam authentication material
+steam-2fa.json
+*.2fa-pending.json
+*.maFile
+*.mafile
+maFiles/
+mafiles/
+credentials/
+secrets/
+cookies.json
+sessions.json
+
+# Local backups
+*.bak
+*.backup
+*.old
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

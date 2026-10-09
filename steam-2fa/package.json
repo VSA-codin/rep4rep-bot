@@ -1,0 +1,21 @@
+{
+  "name": "steam-2fa-r4r-tool",
+  "version": "1.0.0",
+  "description": "Steam 2FA helper for R4R-bot with VPS-based Steam Guard support.",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "check": "node --check index.js && node --check src/store.js && node --check src/totp.js && node --check scripts/enroll.js && node --check scripts/finalize.js && node --check examples/r4r-integration.js",
+    "enroll": "node scripts/enroll.js",
+    "finalize": "node scripts/finalize.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "author": "VSA (Discord: vacsecuredapproved)",
+  "license": "MIT",
+  "dependencies": {
+    "steam-totp": "2.1.2",
+    "steamcommunity": "3.50.3"
+  }
+}

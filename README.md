@@ -31,7 +31,9 @@ VSA does **not** claim authorship of the original rep4rep project or its inherit
 - Lets you add, re-login and remove Steam accounts from the interactive menu.
 - Supports `--auto` mode so a scheduler can run the job without waiting for keyboard input.
 - Uses a separate `SteamCommunity` client per saved account during Auto Run to avoid cross-account session mixing.
-- Integrates with [`steam-2fa-r4r-tool`](https://github.com/VSA-codin/steam-2fa-r4r-tool) for VPS-side Steam Guard Mobile setup and code generation.
+- Includes the integrated [`steam-2fa/`](steam-2fa/README.md) for VPS-side Steam Guard Mobile setup and code generation.
+
+> **Security notice (October 2026):** The latest steamcommunity version still depends on vulnerable legacy libraries, including request and cheerio. npm audit reports unresolved vulnerabilities, including critical findings. Use only in a controlled environment. Never publish Steam credentials or authentication secrets.
 
 ## Requirements
 
@@ -129,7 +131,7 @@ KYNTRA Core is a separate project/service and is not controlled by R4R Bot.
 ## Login to VPS from Windows PowerShell
 
 ```powershell
-ssh -i "$env:USERPROFILE\Downloads\KYNTRA-key.pem" admin@3.76.82.252
+ssh -i "$env:USERPROFILE\Downloads\YOUR-SSH-KEY.pem" admin@YOUR_VPS_IP
 ```
 
 ## Current automatic schedule
@@ -224,27 +226,26 @@ systemctl is-active r4r-bot.timer
 systemctl list-timers r4r-bot.timer --all --no-pager
 ```
 
-## Steam 2FA helper
+## Integrated Steam Guard 2FA
 
-The companion project is:
+Steam Guard tools are included in `steam-2fa/`.
 
-```text
-~/apps/steam-2fa-r4r-tool
-```
+Install and check from the repository root:
 
-Repository:
+    npm install
+    npm run check
 
-```text
-https://github.com/VSA-codin/steam-2fa-r4r-tool
-```
+Steam Guard commands:
 
-The sensitive authenticator data stays outside Git repositories:
+    npm run 2fa:enroll
+    npm run 2fa:finalize -- ACCOUNT
 
-```text
-~/.config/r4r/steam-2fa.json
-```
+Automatic re-login is handled by `auto-relogin.js`.
 
-Do not commit or publish that file, Steam passwords, cookies, access tokens, `shared_secret`, `identity_secret` or `revocation_code`.
+Keep passwords and 2FA secrets outside Git:
+`~/.config/r4r/`
+
+See [Steam Guard documentation](steam-2fa/README.md).
 
 ## systemd files
 

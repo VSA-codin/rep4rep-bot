@@ -3,7 +3,7 @@ Description=Run R4R Bot every hour
 
 [Timer]
 OnCalendar=hourly
-Persistent=true
+Persistent=false
 Unit=r4r-bot.service
 
 [Install]

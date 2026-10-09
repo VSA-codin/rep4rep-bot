@@ -9,13 +9,17 @@
     "moment": "^2.29.1",
     "node-fetch": "^2.0.0",
     "node-menu": "^1.3.0",
-    "sqlite3": "^5.0.2",
+    "sqlite3": "6.0.1",
     "steam-totp": "^2.1.2",
     "steamcommunity": "^3.50.3",
     "steamid": "^2.0.0"
   },
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "check": "node --check index.js && node --check auto-relogin.js && npm run check:2fa",
+    "check:2fa": "node --check steam-2fa/index.js && node --check steam-2fa/src/store.js && node --check steam-2fa/src/totp.js && node --check steam-2fa/scripts/enroll.js && node --check steam-2fa/scripts/finalize.js",
+    "2fa:enroll": "node steam-2fa/scripts/enroll.js",
+    "2fa:finalize": "node steam-2fa/scripts/finalize.js"
   },
   "repository": {
     "type": "git",
