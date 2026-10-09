@@ -3,6 +3,7 @@ var readLine = require('readline');
 const sqlite3 = require('sqlite3').verbose();
 var SteamCommunity = require('steamcommunity');
 var community = new SteamCommunity();
+const { autoRelogin } = require('./auto-relogin');
 const SteamTotp = require('steam-totp');
 const fs = require('fs');
 const os = require('os');
@@ -26,7 +27,6 @@ function getSteam2FASecret(accountName) {
         return null;
     }
 }
-
 const SteamID = require('steamid');
 var config = require('./config.json');
 const FormData = require('form-data');
@@ -35,6 +35,22 @@ var moment = require('moment');
 moment().format();
 
 const { version } = require('./package.json');
+
+function updateChecker() {
+    fetch('https://raw.githubusercontent.com/KniferFTW/rep4rep-bot/main/package.json', {
+        method: 'GET'
+    })
+
+    .then(res => res.json())
+    .then(json => {
+        if(json.version > version) {
+            console.log(`\n[UPDATE] New update available. Current version: v${version}, newest version: v${json.version}.`.bold.yellow)
+            console.log('[UPDATE] Get the latest version here: https://github.com/KniferFTW/rep4rep-bot'.bold.yellow)
+        }
+    }).catch(error => {
+            console.log('\n[UPDATE] Unable to check for new updates!'.bold.red)
+    });
+}
 
 var rl = readLine.createInterface({
 	"input": process.stdin,
@@ -92,14 +108,13 @@ function createTables() {
 
 function printHeader(headTitle = 'Home') {
     console.log('\x1Bc');
-    let title = 'R4R Bot - ' + headTitle + '\n';
+    let title = 'Rep4Rep Bot - ' + headTitle + '\n';
     console.log(title.bold.bgBlue);
 }
 
 function homeMenu(err = false) {
     printHeader();
-    console.log('Repaired & maintained by VSA | Discord: vacsecuredapproved'.cyan);
-    console.log();
+    setTimeout(updateChecker, 1500);
     console.log('1) Auto Run');
     console.log('2) Manage Steam Accounts');
     console.log('CTRL + C to exit at any time.'.gray);
@@ -224,8 +239,8 @@ async function autoRun() {
             }
 
             console.log(steamProfile.username + ' added to rep4rep.');
-            autoRun(); // hella nasty, fix later
-            return;
+            console.log('[AUTO] Profile added. Its Rep4Rep ID will be loaded on the next run.');
+            continue;
         }
 
         let hours = moment().diff(moment(steamProfile.last_comment), 'hours');
@@ -233,13 +248,25 @@ async function autoRun() {
             console.log('attempting to leave comments from: ' + steamProfile.username);
             console.log('[ 15 sec delay between each comment ]'.bold.cyan);
 
-            const accountCommunity = new SteamCommunity();
-            accountCommunity.setCookies(JSON.parse(steamProfile.cookies));
-            accountCommunity.oAuthToken = steamProfile.token;
-            let loggedIn = await isLoggedIn(accountCommunity);
-
-            if (!loggedIn) {
-                console.log(steamProfile.username + ' is logged out, re-login from the manage profiles view.'.bold.red);
+            let accountCommunity = new SteamCommunity();
+            try {
+                if (steamProfile.cookies) {
+                    accountCommunity.setCookies(JSON.parse(steamProfile.cookies));
+                }
+                accountCommunity.oAuthToken = steamProfile.token || null;
+                const loggedIn = steamProfile.cookies ? await isLoggedIn(accountCommunity) : false;
+                if (!loggedIn) {
+                    console.log('[RELOGIN] Session expired: ' + steamProfile.username);
+                    const restoredClient = await autoRelogin(steamProfile.username, db);
+                    if (!restoredClient) {
+                        console.log('[RELOGIN] Skipping account.');
+                        continue;
+                    }
+                    // Reuse the verified client, including its new cookies and session.
+                    accountCommunity = restoredClient;
+                }
+            } catch (err) {
+                console.log('[AUTO] Session check failed for ' + steamProfile.username + ': ' + err.message);
                 continue;
             }
 
@@ -252,47 +279,46 @@ async function autoRun() {
             }
 
             let failedAttempts = 0;
-            for (const task of data ) {
-                if (failedAttempts == 2) {
-                    console.log('failed twice, skipping steamProfile.'.bold.yellow); // aka completed/steam limited for today
+            for (const task of data) {
+                if (failedAttempts >= 2) {
+                    console.log('failed twice, skipping steamProfile.'.bold.yellow);
                     break;
                 }
 
                 console.log(steamProfile.username + ' -> ' + task.targetSteamProfileName + ' | ' + task.requiredCommentText);
+                try {
+                    await new Promise((resolve, reject) => {
+                        accountCommunity.postUserComment(task.targetSteamProfileId, task.requiredCommentText, (err) => {
+                            if (err) reject(err);
+                            else resolve();
+                        });
+                    });
+                    console.log('posted comment successfully.'.bold.green);
 
-                await accountCommunity.postUserComment(task.targetSteamProfileId, task.requiredCommentText, async function(err) {
-                    if (err) {
-                        console.log(err.message);
+                    await new Promise((resolve, reject) => {
+                        db.run(`UPDATE steamprofiles SET last_comment=DATETIME('now', 'localtime') WHERE id=?`,
+                            [steamProfile.id], err => err ? reject(err) : resolve());
+                    });
+
+                    const form = new FormData();
+                    form.append('apiToken', config.apiToken);
+                    form.append('taskId', task.taskId);
+                    form.append('commentId', task.requiredCommentId);
+                    form.append('authorSteamProfileId', repSteamProfilesObj[steamProfile.steamId]);
+                    const completeResponse = await fetch('https://rep4rep.com/pub-api/tasks/complete', {
+                        method: 'post', body: form
+                    });
+                    const completeData = await completeResponse.json();
+                    if (completeData.error) {
+                        console.log('[AUTO] Task completion error: ' + completeData.error);
                         failedAttempts++;
                     } else {
-                        console.log('posted comment successfully.'.bold.green);
-
-                        db.run(`UPDATE steamprofiles SET last_comment=DATETIME('now', 'localtime') WHERE id=?`, [steamProfile.id], function(err) {
-                          if (err) {
-                            console.log(err.message);
-                            process.exit();
-                          }
-                        });
-
-                        // mark task as complete
-                        let form = new FormData();
-                        form.append('apiToken', config.apiToken);
-                        form.append('taskId', task.taskId);
-                        form.append('commentId', task.requiredCommentId);
-                        form.append('authorSteamProfileId', repSteamProfilesObj[steamProfile.steamId]);
-
-                        const response = await fetch('https://rep4rep.com/pub-api/tasks/complete', {
-                            method: 'post',
-                            body: form
-                        });
-                        const data = await response.json();
-                        if (data.error) {
-                            console.log(data.error);
-                            process.exit();
-                        }
-                        console.log(data.info ?? data.success);
+                        console.log(completeData.info ?? completeData.success);
                     }
-                });
+                } catch (err) {
+                    console.log('[AUTO] Comment/task failed: ' + err.message);
+                    failedAttempts++;
+                }
                 await sleep(15000);
             }
         } else {
@@ -328,8 +354,10 @@ async function reloginSteamAccount() {
             process.exit();
           }
 
-          community.setCookies(JSON.parse(row.cookies));
-          community.oAuthToken = row.token;
+          if (!row) {
+            profilesMenu('No saved account with that username. Use "Add a Steam Account" instead.');
+            return;
+          }
 
           rl.question("Password: ", function(password) {
       		doLogin(accountName, password);
@@ -360,19 +388,19 @@ function doLogin(accountName, password, authCode, twoFactorCode, captcha) {
 	}, function(err, sessionID, cookies, steamguard, oauthToken) {
 		if(err) {
 			if(err.message == 'SteamGuardMobile') {
-				const sharedSecret = getSteam2FASecret(accountName);
+			        const sharedSecret = getSteam2FASecret(accountName);
 
-				if (sharedSecret) {
-					const code = SteamTotp.generateAuthCode(sharedSecret);
-					console.log('[2FA] Generated Steam Guard code automatically.');
-					doLogin(accountName, password, null, code);
-				} else {
-					rl.question("Steam Authenticator Code: ", function(code) {
-						doLogin(accountName, password, null, code);
-					});
-				}
+			        if (sharedSecret) {
+			                const code = SteamTotp.generateAuthCode(sharedSecret);
+			                console.log('[2FA] Generated Steam Guard code automatically.');
+			                doLogin(accountName, password, null, code);
+			        } else {
+			                rl.question("Steam Authenticator Code: ", function(code) {
+			                        doLogin(accountName, password, null, code);
+			                });
+			        }
 
-				return;
+			        return;
 			}
 
 			if(err.message == 'SteamGuard') {
@@ -399,13 +427,20 @@ function doLogin(accountName, password, authCode, twoFactorCode, captcha) {
 
 		console.log("Logged on!");
 
-        steamId64 = community.steamID.getSteamID64();
-        db.run(`INSERT OR REPLACE INTO steamprofiles (username, steamId, cookies, token) VALUES (?, ?, ?, ?)`, [accountName, steamId64, JSON.stringify(cookies), oauthToken], function(err) {
-          if (err) {
-            console.log(err.message);
-            process.exit();
-          }
-          profilesMenu('Steam Account added! (or updated)');
-        });
+        const steamId64 = community.steamID.getSteamID64();
+        db.get('SELECT id FROM steamprofiles WHERE username = ? OR steamId = ?',
+            [accountName, steamId64], function(lookupErr, existing) {
+                if (lookupErr) return profilesMenu(lookupErr.message);
+                const sql = existing
+                    ? 'UPDATE steamprofiles SET username=?, steamId=?, cookies=?, token=? WHERE id=?'
+                    : 'INSERT INTO steamprofiles (username, steamId, cookies, token) VALUES (?, ?, ?, ?)';
+                const params = existing
+                    ? [accountName, steamId64, JSON.stringify(cookies), oauthToken, existing.id]
+                    : [accountName, steamId64, JSON.stringify(cookies), oauthToken];
+                db.run(sql, params, function(err) {
+                    if (err) return profilesMenu(err.message);
+                    profilesMenu('Steam Account added! (or updated)');
+                });
+            });
 	});
 }

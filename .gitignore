@@ -7,3 +7,29 @@ steam-2fa.json
 *.2fa-pending.json
 *.maFile
 *.mafile
+
+# Private Steam authentication data
+.env
+.env.*
+!.env.example
+steam-passwords.json
+steam-2fa.json
+cookies.json
+sessions.json
+*.maFile
+*.mafile
+*.2fa-pending.json
+credentials/
+secrets/
+maFiles/
+mafiles/
+
+# Runtime data and backups
+steamprofiles.db*
+*.sqlite
+*.sqlite3
+*.backup
+*.old
+*.log
+logs/
+backups/
