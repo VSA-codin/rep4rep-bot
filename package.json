@@ -1,24 +1,27 @@
 {
   "name": "rep4rep-bot",
-  "version": "0.0.3",
-  "description": "Rep4Rep.com Automatic Comment Bot.",
+  "version": "2.1.0",
+  "private": true,
+  "description": "Rep4Rep.com automatic Steam comment bot (Rep4Rep API v1).",
   "main": "index.js",
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
-    "colors": "^1.4.0",
-    "form-data": "^4.0.0",
-    "moment": "^2.29.1",
     "node-fetch": "^2.0.0",
     "sqlite3": "6.0.1",
     "steam-totp": "^2.1.2",
-    "steamcommunity": "^3.50.3",
-    "steamid": "^2.0.0"
+    "steamcommunity": "^3.50.3"
   },
   "scripts": {
     "start": "node index.js",
-    "check": "node --check index.js && node --check auto-relogin.js && npm run check:2fa",
-    "check:2fa": "node --check steam-2fa/index.js && node --check steam-2fa/src/store.js && node --check steam-2fa/src/totp.js && node --check steam-2fa/scripts/enroll.js && node --check steam-2fa/scripts/finalize.js",
+    "check": "node --check index.js && node --check src/run.js && node --check src/menu.js && node --check src/accounts.js && node --check src/db.js && node --check src/config.js && node --check src/prompt.js && node --check lib/ansi.js && node --check auto-relogin.js && node --check lib/api.js && node --check lib/comment-filter.js && node --check lib/privacy.js && node --check lib/session.js && npm run check:2fa",
+    "check:2fa": "node --check steam-2fa/index.js && node --check steam-2fa/src/store.js && node --check steam-2fa/src/totp.js && node --check steam-2fa/scripts/enroll.js && node --check steam-2fa/scripts/finalize.js && node --check steam-2fa/scripts/code.js && node --check steam-2fa/scripts/check.js",
     "2fa:enroll": "node steam-2fa/scripts/enroll.js",
-    "2fa:finalize": "node steam-2fa/scripts/finalize.js"
+    "2fa:finalize": "node steam-2fa/scripts/finalize.js",
+    "test": "node --test",
+    "2fa:code": "node steam-2fa/scripts/code.js",
+    "2fa:check": "node steam-2fa/scripts/check.js"
   },
   "repository": {
     "type": "git",
@@ -29,7 +32,7 @@
     "bot"
   ],
   "author": "VSA (current maintainer; upstream attribution in NOTICE.md)",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/VSA-codin/rep4rep-bot/issues"
   },
@@ -39,5 +42,9 @@
       "form-data": "2.5.6",
       "qs": "6.16.0"
     }
+  },
+  "allowScripts": {
+    "sqlite3@6.0.1": true,
+    "protobufjs": false
   }
 }

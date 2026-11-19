@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 'use strict';
 
 const fs = require('fs');
@@ -89,14 +90,41 @@ function validateAccountName(accountName) {
         throw new Error('Steam account name is required.');
     }
 
-    return accountName.trim();
+    const trimmed = accountName.trim();
+
+    // "__proto__" would silently change the store object's prototype instead of
+    // adding an entry; control characters have no place in a login name.
+    if (trimmed === '__proto__' || /[\u0000-\u001f]/.test(trimmed)) {
+        throw new Error('Invalid Steam account name.');
+    }
+
+    return trimmed;
+}
+
+function hasOwn(object, key) {
+    return Object.prototype.hasOwnProperty.call(object, key);
 }
 
 function getAccountSecrets(accountName) {
     const account = validateAccountName(accountName);
     const store = readStore();
 
-    return store[account] || null;
+    return hasOwn(store, account) ? store[account] : null;
+}
+
+// Names of accounts that have an authenticator stored. Never returns secrets.
+function listAccounts() {
+    const store = readStore();
+
+    return Object.keys(store).filter((name) => {
+        const entry = store[name];
+        return Boolean(
+            entry &&
+            typeof entry === 'object' &&
+            typeof entry.shared_secret === 'string' &&
+            entry.shared_secret.length > 0
+        );
+    });
 }
 
 function hasAccountSecrets(accountName) {
@@ -197,6 +225,7 @@ function getConfigPath() {
 module.exports = {
     getAccountSecrets,
     hasAccountSecrets,
+    listAccounts,
     saveAccountSecrets,
     getPendingPath,
     readPending,

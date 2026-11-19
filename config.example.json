@@ -1,3 +1,7 @@
 {
-  "apiToken": ""
+  "apiToken": "",
+  "commentFilter": {
+    "enabled": true,
+    "maxLength": 300
+  }
 }

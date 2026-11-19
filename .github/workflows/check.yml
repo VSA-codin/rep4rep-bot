@@ -9,16 +9,28 @@ permissions:
   contents: read
 
 jobs:
-  syntax:
+  checks:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '26'
+          node-version: lts/*
           cache: npm
-      - name: Install dependencies
+      - name: Install dependencies (install scripts disabled)
         run: npm ci --ignore-scripts
+      - name: Build the sqlite3 native module (the only allowed install script)
+        run: npm rebuild sqlite3
       - name: Validate source syntax
         run: npm run check
+      - name: Unit tests
+        run: npm test
+      - name: Refuse to build with secrets tracked in git
+        run: |
+          if git ls-files | grep -E '(^|/)(config\.json|steamprofiles\.db.*|steam-2fa\.json|steam-passwords\.json|\.env)$'; then
+            echo "Secret or runtime file is tracked by git" >&2
+            exit 1
+          fi
+      - name: Dependency audit (informational)
+        run: npm audit --omit=dev || true

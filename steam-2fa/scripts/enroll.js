@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// SPDX-License-Identifier: MIT
 'use strict';
 
 const readline = require('readline');
@@ -9,6 +10,7 @@ const {
     writePending,
     deletePending,
     getPendingPath,
+    getConfigPath,
     hasAccountSecrets
 } = require('../src/store');
 
@@ -110,7 +112,12 @@ function finalizeEnrollment(response) {
                         '[SUCCESS] Secrets saved locally.'
                     );
                     console.log(
-                        '[IMPORTANT] Keep the revocation code safe.'
+                        '[IMPORTANT] The revocation code (needed to remove ' +
+                        'Steam Guard if you lose access) is stored in ' +
+                        getConfigPath() + ' under "revocation_code".'
+                    );
+                    console.log(
+                        '[IMPORTANT] Copy it to a safe, offline place now.'
                     );
 
                     close(0);
