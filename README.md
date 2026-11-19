@@ -14,7 +14,7 @@ This repository is a VSA-maintained edition of earlier rep4rep bot code:
 - Service and API: [rep4rep.com](https://rep4rep.com).
 - **VSA work:** the old `pub-api` endpoints were removed, so VSA rewrote the API layer for **API v1** (Bearer authentication, per-profile tasks, ticket-based submission) and added multi-account session isolation, unattended re-login with Steam Guard, the [2FA tools](steam-2fa/README.md) (enrollment and on-demand Steam Guard codes), privacy-preserving logs, the comment filter, systemd deployment and tests.
 
-**Licensing.** This repository is MIT-licensed ([LICENSE](LICENSE)). Since 2.1.0 the program is an independent reimplementation, split into small modules (`src/`, `lib/`). It shares its purpose and the public Rep4Rep API with the earlier bots, and none of the earlier source lines are copied: of 599 non-trivial lines, 13 are identical to the earlier code, and all of those are standard library imports, the database column names (which must stay compatible with existing databases) or a one-line library call. Credits and provenance are in [NOTICE.md](NOTICE.md). VSA does not claim authorship of the original project or of the Rep4Rep service.
+**Licensing.** This repository is MIT-licensed ([LICENSE](LICENSE)). Since 2.1.0 the program is an independent reimplementation, split into small modules (`src/`, `lib/`). It shares its purpose and the public Rep4Rep API with the earlier bots, and almost none of the earlier source lines remain: of 599 non-trivial lines, 13 are identical to the earlier code, and all of those are standard library imports, the database column names (which must stay compatible with existing databases) or a one-line library call. Credits and provenance are in [NOTICE.md](NOTICE.md). VSA does not claim authorship of the original project or of the Rep4Rep service.
 
 ## What it does
 
@@ -164,7 +164,7 @@ That is the complete list: the bot has no other network destinations.
 - **Secrets.** API key, Steam session cookies and tokens (`steamprofiles.db`), passwords and authenticator secrets give full access to your accounts. Keep them out of git, screenshots, chats and logs. The bot sends the API key only in an HTTP header, refuses redirects, and does not print it. If anything leaks, rotate it (new Rep4Rep key; Steam password/authenticator) because deleting a commit does not invalidate a leaked secret.
 - **Steam rules and bans.** Steam limits profile comments and discourages automation. Keep the delays. Prefer dedicated accounts.
 - **Third-party text.** See the [comment filter](#comment-filter). Review what the bot posts.
-- **Dependencies.** The Steam stack (`steamcommunity`) pulls old transitive packages. `npm audit --omit=dev` currently reports 12 issues (7 high, 5 moderate, none critical). The suggested `npm audit fix --force` would **downgrade** `steamcommunity` and can break the bot, so do not run it. Run the bot as an unprivileged user, ideally with the systemd sandbox.
+- **Dependencies.** The Steam stack (`steamcommunity`) pulls old transitive packages. `npm audit --omit=dev` reports open advisories in these transitive packages (none critical at the time of the 2.1.0 release; run it to see the current list). The suggested `npm audit fix --force` would **downgrade** `steamcommunity` and can break the bot, so do not run it. Run the bot as an unprivileged user, ideally with the systemd sandbox.
 - **No guarantee.** Nobody can promise "100% secure". Report problems via [SECURITY.md](SECURITY.md).
 
 ## Contributing

@@ -3,7 +3,7 @@
 ## 2.1.0 - 2026-11-08
 
 ### Changed
-- **Independent implementation.** The earlier `index.js` was replaced by small modules: `src/db.js`, `src/config.js`, `src/prompt.js`, `src/accounts.js`, `src/menu.js`, `src/run.js` and a short entry point. No earlier source lines remain (13 of 599 non-trivial lines are identical, all imports, column names or a library call). The repository is MIT-licensed as a whole; see [NOTICE.md](NOTICE.md) for how this was checked and its limits.
+- **Independent implementation.** The earlier `index.js` was replaced by small modules: `src/db.js`, `src/config.js`, `src/prompt.js`, `src/accounts.js`, `src/menu.js`, `src/run.js` and a short entry point. Almost no earlier source lines remain (13 of 599 non-trivial lines are identical, all imports, column names or a library call). The repository is MIT-licensed as a whole; see [NOTICE.md](NOTICE.md) for how this was checked and its limits.
 - The interactive menu was redesigned (run now, Steam accounts, add / refresh / remove). `node index.js --auto` and the environment variables `R4R_DRY_RUN` and `R4R_ONLY` work as before.
 - Fewer dependencies: `colors`, `moment`, `form-data` and `steamid` were removed.
 - Passwords are read key by key without any echo (`src/prompt.js`); piped input is supported for scripts and tests.

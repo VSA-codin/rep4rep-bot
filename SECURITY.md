@@ -26,6 +26,6 @@ More details for the 2FA module: [steam-2fa/SECURITY.md](steam-2fa/SECURITY.md).
 
 ## Known limitations
 
-- `steamcommunity` depends on old packages with open advisories (`npm audit --omit=dev`: 12 issues, 7 high, 5 moderate, 0 critical at release time). The bot does not process untrusted input with them beyond Steam/Rep4Rep API responses, but run it as an unprivileged user and keep the systemd sandbox.
+- `steamcommunity` depends on old packages with open advisories (`npm audit --omit=dev`: 10 issues, 6 high, 4 moderate, 0 critical, checked after the 2.1.0 release). The bot does not process untrusted input with them beyond Steam/Rep4Rep API responses, but run it as an unprivileged user and keep the systemd sandbox.
 - Unattended re-login keeps Steam passwords in plain text in `~/.config/r4r/steam-passwords.json` (mode 600). Use dedicated accounts and a host you control.
 - Comment text comes from other users. Keep the comment filter enabled.
