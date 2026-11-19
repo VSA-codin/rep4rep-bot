@@ -8,7 +8,7 @@
     "node": ">=20"
   },
   "dependencies": {
-    "node-fetch": "^2.0.0",
+    "node-fetch": "^3.3.2",
     "sqlite3": "6.0.1",
     "steam-totp": "^2.1.2",
     "steamcommunity": "^3.50.3"
