@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.1.0 - 2026-11-08
+## 2.1.0 - 2026-11-19
 
 ### Changed
 - **Independent implementation.** The earlier `index.js` was replaced by small modules: `src/db.js`, `src/config.js`, `src/prompt.js`, `src/accounts.js`, `src/menu.js`, `src/run.js` and a short entry point. Almost no earlier source lines remain (13 of 599 non-trivial lines are identical, all imports, column names or a library call). The repository is MIT-licensed as a whole; see [NOTICE.md](NOTICE.md) for how this was checked and its limits.
